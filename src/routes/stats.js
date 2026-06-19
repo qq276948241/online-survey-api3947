@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../config/database');
 const authMiddleware = require('../middleware/auth');
+const { getOptionMap, getOptionValues } = require('../utils/surveyData');
 
 const router = express.Router({ mergeParams: true });
 
@@ -80,11 +81,7 @@ router.get('/question/:questionId', authMiddleware, (req, res) => {
       ORDER BY count DESC
     `).all(questionId);
 
-    const options = db.prepare('SELECT * FROM options WHERE question_id = ? ORDER BY sort_order ASC').all(questionId);
-    const optionMap = {};
-    for (const opt of options) {
-      optionMap[opt.value] = opt.text;
-    }
+    const optionMap = getOptionMap(questionId);
 
     const enrichedStats = stats.map(s => ({
       value: s.value,
@@ -108,11 +105,7 @@ router.get('/question/:questionId', authMiddleware, (req, res) => {
       ORDER BY count DESC
     `).all(questionId);
 
-    const options = db.prepare('SELECT * FROM options WHERE question_id = ? ORDER BY sort_order ASC').all(questionId);
-    const optionMap = {};
-    for (const opt of options) {
-      optionMap[opt.value] = opt.text;
-    }
+    const optionMap = getOptionMap(questionId);
 
     const enrichedStats = stats.map(s => ({
       value: s.value,
@@ -225,11 +218,11 @@ router.get('/crosstab', authMiddleware, (req, res) => {
 
   const values1 = question1.type === 'scale'
     ? Array.from({ length: question1.scale_max - question1.scale_min + 1 }, (_, i) => String(question1.scale_min + i))
-    : db.prepare('SELECT value FROM options WHERE question_id = ? ORDER BY sort_order ASC').all(q1).map(o => o.value);
+    : getOptionValues(q1);
 
   const values2 = question2.type === 'scale'
     ? Array.from({ length: question2.scale_max - question2.scale_min + 1 }, (_, i) => String(question2.scale_min + i))
-    : db.prepare('SELECT value FROM options WHERE question_id = ? ORDER BY sort_order ASC').all(q2).map(o => o.value);
+    : getOptionValues(q2);
 
   const crosstab = {};
   const rowTotals = {};
@@ -261,22 +254,13 @@ router.get('/crosstab', authMiddleware, (req, res) => {
     }
   }
 
-  const labels1 = {};
-  const labels2 = {};
+  const labels1 = question1.type === 'scale'
+    ? values1.reduce((acc, v) => ({ ...acc, [v]: v }), {})
+    : getOptionMap(q1);
 
-  if (question1.type === 'scale') {
-    for (const v of values1) labels1[v] = v;
-  } else {
-    const opts = db.prepare('SELECT value, text FROM options WHERE question_id = ?').all(q1);
-    for (const o of opts) labels1[o.value] = o.text;
-  }
-
-  if (question2.type === 'scale') {
-    for (const v of values2) labels2[v] = v;
-  } else {
-    const opts = db.prepare('SELECT value, text FROM options WHERE question_id = ?').all(q2);
-    for (const o of opts) labels2[o.value] = o.text;
-  }
+  const labels2 = question2.type === 'scale'
+    ? values2.reduce((acc, v) => ({ ...acc, [v]: v }), {})
+    : getOptionMap(q2);
 
   res.json({
     question1: { id: question1.id, title: question1.title, type: question1.type, values: values1, labels: labels1 },

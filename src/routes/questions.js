@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../config/database');
 const authMiddleware = require('../middleware/auth');
+const { getQuestionsWithOptions, getSingleQuestionWithOptions } = require('../utils/surveyData');
 
 const router = express.Router({ mergeParams: true });
 
@@ -151,16 +152,7 @@ router.put('/:questionId', authMiddleware, (req, res) => {
     }
   }
 
-  const updated = db.prepare('SELECT * FROM questions WHERE id = ?').get(questionId);
-
-  if (updated.type === 'single' || updated.type === 'multiple') {
-    updated.options = db.prepare(`
-      SELECT id, text, value, sort_order 
-      FROM options 
-      WHERE question_id = ? 
-      ORDER BY sort_order ASC, id ASC
-    `).all(questionId);
-  }
+  const updated = getSingleQuestionWithOptions(questionId);
 
   res.json(updated);
 });
@@ -191,22 +183,7 @@ router.get('/', authMiddleware, (req, res) => {
     return res.status(404).json({ error: '问卷不存在' });
   }
 
-  const questions = db.prepare(`
-    SELECT * FROM questions 
-    WHERE survey_id = ? 
-    ORDER BY sort_order ASC, id ASC
-  `).all(surveyId);
-
-  for (const q of questions) {
-    if (q.type === 'single' || q.type === 'multiple') {
-      q.options = db.prepare(`
-        SELECT id, text, value, sort_order 
-        FROM options 
-        WHERE question_id = ? 
-        ORDER BY sort_order ASC, id ASC
-      `).all(q.id);
-    }
-  }
+  const questions = getQuestionsWithOptions(surveyId);
 
   res.json(questions);
 });

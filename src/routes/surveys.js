@@ -2,6 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../config/database');
 const authMiddleware = require('../middleware/auth');
+const { getQuestionsWithOptions } = require('../utils/surveyData');
 
 const router = express.Router();
 
@@ -66,22 +67,7 @@ router.get('/:id', authMiddleware, (req, res) => {
     return res.status(404).json({ error: '问卷不存在' });
   }
 
-  const questions = db.prepare(`
-    SELECT * FROM questions 
-    WHERE survey_id = ? 
-    ORDER BY sort_order ASC, id ASC
-  `).all(id);
-
-  for (const q of questions) {
-    if (q.type === 'single' || q.type === 'multiple') {
-      q.options = db.prepare(`
-        SELECT id, text, value, sort_order 
-        FROM options 
-        WHERE question_id = ? 
-        ORDER BY sort_order ASC, id ASC
-      `).all(q.id);
-    }
-  }
+  const questions = getQuestionsWithOptions(id);
 
   survey.questions = questions;
 

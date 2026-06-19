@@ -2,6 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../config/database');
 const authMiddleware = require('../middleware/auth');
+const { getQuestionsWithOptions, getTemplateQuestionsWithOptions } = require('../utils/surveyData');
 
 const router = express.Router();
 
@@ -16,9 +17,7 @@ router.post('/from-survey/:surveyId', authMiddleware, (req, res) => {
     return res.status(404).json({ error: '问卷不存在' });
   }
 
-  const questions = db.prepare(`
-    SELECT * FROM questions WHERE survey_id = ? ORDER BY sort_order ASC, id ASC
-  `).all(surveyId);
+  const questions = getQuestionsWithOptions(surveyId);
 
   if (questions.length === 0) {
     return res.status(400).json({ error: '问卷没有题目，无法保存为模板' });
@@ -65,11 +64,8 @@ router.post('/from-survey/:surveyId', authMiddleware, (req, res) => {
       );
       const tplQuestionId = qResult.lastInsertRowid;
 
-      if (q.type === 'single' || q.type === 'multiple') {
-        const options = db.prepare(
-          'SELECT * FROM options WHERE question_id = ? ORDER BY sort_order ASC, id ASC'
-        ).all(q.id);
-        for (const opt of options) {
+      if (q.options && q.options.length > 0) {
+        for (const opt of q.options) {
           insertTplOption.run(tplQuestionId, opt.text, opt.value, opt.sort_order);
         }
       }
@@ -114,22 +110,7 @@ router.get('/:id', authMiddleware, (req, res) => {
     return res.status(404).json({ error: '模板不存在' });
   }
 
-  const questions = db.prepare(`
-    SELECT * FROM template_questions
-    WHERE template_id = ?
-    ORDER BY sort_order ASC, id ASC
-  `).all(id);
-
-  for (const q of questions) {
-    if (q.type === 'single' || q.type === 'multiple') {
-      q.options = db.prepare(`
-        SELECT id, text, value, sort_order
-        FROM template_options
-        WHERE question_id = ?
-        ORDER BY sort_order ASC, id ASC
-      `).all(q.id);
-    }
-  }
+  const questions = getTemplateQuestionsWithOptions(id);
 
   template.questions = questions;
   res.json(template);
@@ -164,25 +145,10 @@ router.post('/:id/create-survey', authMiddleware, (req, res) => {
     return res.status(404).json({ error: '模板不存在' });
   }
 
-  const questions = db.prepare(`
-    SELECT * FROM template_questions
-    WHERE template_id = ?
-    ORDER BY sort_order ASC, id ASC
-  `).all(id);
+  const questions = getTemplateQuestionsWithOptions(id);
 
   if (questions.length === 0) {
     return res.status(400).json({ error: '模板没有题目' });
-  }
-
-  for (const q of questions) {
-    if (q.type === 'single' || q.type === 'multiple') {
-      q.options = db.prepare(`
-        SELECT text, value, sort_order
-        FROM template_options
-        WHERE question_id = ?
-        ORDER BY sort_order ASC, id ASC
-      `).all(q.id);
-    }
   }
 
   const surveyTitle = title?.trim() || template.title.replace(/\(模板\)$/, '').trim();

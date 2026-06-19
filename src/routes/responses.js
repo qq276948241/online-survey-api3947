@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../config/database');
 const { generateRespondentHash, getClientIp } = require('../utils/respondent');
+const { getQuestionsWithOptions } = require('../utils/surveyData');
 
 const router = express.Router();
 
@@ -17,22 +18,7 @@ router.get('/:shareToken', (req, res) => {
     return res.status(403).json({ error: '问卷未发布或已关闭' });
   }
 
-  const questions = db.prepare(`
-    SELECT * FROM questions 
-    WHERE survey_id = ? 
-    ORDER BY sort_order ASC, id ASC
-  `).all(survey.id);
-
-  for (const q of questions) {
-    if (q.type === 'single' || q.type === 'multiple') {
-      q.options = db.prepare(`
-        SELECT id, text, value, sort_order 
-        FROM options 
-        WHERE question_id = ? 
-        ORDER BY sort_order ASC, id ASC
-      `).all(q.id);
-    }
-  }
+  const questions = getQuestionsWithOptions(survey.id);
 
   const ip = getClientIp(req);
   const userAgent = req.headers['user-agent'] || '';
