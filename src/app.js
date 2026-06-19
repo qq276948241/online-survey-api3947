@@ -9,6 +9,7 @@ const responseRoutes = require('./routes/responses');
 const statsRoutes = require('./routes/stats');
 const exportRoutes = require('./routes/export');
 const shareRoutes = require('./routes/share');
+const templateRoutes = require('./routes/templates');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -30,6 +31,7 @@ app.use('/api/surveys/:surveyId/questions', questionRoutes);
 app.use('/api/surveys/:surveyId/stats', statsRoutes);
 app.use('/api/surveys/:surveyId/export', exportRoutes);
 app.use('/api/surveys/:surveyId/share', shareRoutes);
+app.use('/api/templates', templateRoutes);
 
 app.use('/api/s', responseRoutes);
 
@@ -72,8 +74,15 @@ app.listen(PORT, () => {
   console.log('  GET  /api/surveys/:id/share/qrcode       - 二维码 (DataURL)');
   console.log('  GET  /api/surveys/:id/share/qrcode.png   - 二维码 (PNG图片)');
   console.log('');
+  console.log('  POST /api/templates/from-survey/:id      - 问卷存为模板');
+  console.log('  GET  /api/templates                      - 模板列表');
+  console.log('  GET  /api/templates/:id                  - 模板详情');
+  console.log('  DELETE /api/templates/:id                - 删除模板');
+  console.log('  POST /api/templates/:id/create-survey    - 从模板创建问卷');
+  console.log('');
   console.log('  GET  /api/s/:shareToken                  - 公开获取问卷');
-  console.log('  POST /api/s/:shareToken/submit           - 提交答卷');
+  console.log('  POST /api/s/:shareToken/start              - 开始答题（计时开始）');
+  console.log('  POST /api/s/:shareToken/submit             - 提交答卷（支持超时自动提交）');
 });
 
 module.exports = app;

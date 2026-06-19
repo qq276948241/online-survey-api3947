@@ -6,18 +6,23 @@ const authMiddleware = require('../middleware/auth');
 const router = express.Router();
 
 router.post('/', authMiddleware, (req, res) => {
-  const { title, description, is_one_per_person } = req.body;
+  const { title, description, is_one_per_person, time_limit } = req.body;
   const userId = req.user.id;
 
   if (!title || title.trim() === '') {
     return res.status(400).json({ error: '问卷标题不能为空' });
   }
 
+  const timeLimit = time_limit ? parseInt(time_limit) : 0;
+  if (timeLimit < 0 || timeLimit > 300) {
+    return res.status(400).json({ error: '答题时限需在 0-300 分钟之间，0 表示不限制' });
+  }
+
   const shareToken = uuidv4().replace(/-/g, '').substring(0, 12);
 
   const stmt = db.prepare(`
-    INSERT INTO surveys (user_id, title, description, share_token, is_one_per_person)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO surveys (user_id, title, description, share_token, is_one_per_person, time_limit)
+    VALUES (?, ?, ?, ?, ?, ?)
   `);
 
   const result = stmt.run(
@@ -25,7 +30,8 @@ router.post('/', authMiddleware, (req, res) => {
     title.trim(),
     description || '',
     shareToken,
-    is_one_per_person ? 1 : 1
+    is_one_per_person ? 1 : 1,
+    timeLimit
   );
 
   const survey = db.prepare('SELECT * FROM surveys WHERE id = ?').get(result.lastInsertRowid);
@@ -91,7 +97,7 @@ router.get('/:id', authMiddleware, (req, res) => {
 router.put('/:id', authMiddleware, (req, res) => {
   const { id } = req.params;
   const userId = req.user.id;
-  const { title, description, is_one_per_person } = req.body;
+  const { title, description, is_one_per_person, time_limit } = req.body;
 
   const survey = db.prepare('SELECT * FROM surveys WHERE id = ? AND user_id = ?').get(id, userId);
 
@@ -99,9 +105,17 @@ router.put('/:id', authMiddleware, (req, res) => {
     return res.status(404).json({ error: '问卷不存在' });
   }
 
+  let timeLimit = survey.time_limit;
+  if (time_limit !== undefined) {
+    timeLimit = parseInt(time_limit) || 0;
+    if (timeLimit < 0 || timeLimit > 300) {
+      return res.status(400).json({ error: '答题时限需在 0-300 分钟之间，0 表示不限制' });
+    }
+  }
+
   const stmt = db.prepare(`
     UPDATE surveys 
-    SET title = ?, description = ?, is_one_per_person = ?, updated_at = CURRENT_TIMESTAMP
+    SET title = ?, description = ?, is_one_per_person = ?, time_limit = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
   `);
 
@@ -109,6 +123,7 @@ router.put('/:id', authMiddleware, (req, res) => {
     title || survey.title,
     description !== undefined ? description : survey.description,
     is_one_per_person !== undefined ? (is_one_per_person ? 1 : 0) : survey.is_one_per_person,
+    timeLimit,
     id
   );
 
