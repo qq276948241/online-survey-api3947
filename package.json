@@ -1,0 +1,19 @@
+{
+  "name": "survey-api",
+  "version": "1.0.0",
+  "description": "高校问卷调研后端API系统",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "node src/app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "better-sqlite3": "^9.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "qrcode": "^1.5.3",
+    "uuid": "^9.0.1",
+    "cors": "^2.8.5"
+  }
+}
