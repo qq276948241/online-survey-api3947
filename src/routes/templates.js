@@ -49,14 +49,16 @@ router.post('/from-survey/:surveyId', authMiddleware, (req, res) => {
     );
     const templateId = tplResult.lastInsertRowid;
 
-    for (const q of questions) {
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      const sortOrder = Number.isFinite(q.sort_order) ? q.sort_order : i;
       const qResult = insertTplQuestion.run(
         templateId,
         q.type,
         q.title,
         q.description || '',
         q.required,
-        q.sort_order,
+        sortOrder,
         q.scale_min,
         q.scale_max,
         q.scale_min_label,
@@ -66,7 +68,8 @@ router.post('/from-survey/:surveyId', authMiddleware, (req, res) => {
 
       if (q.options && q.options.length > 0) {
         for (const opt of q.options) {
-          insertTplOption.run(tplQuestionId, opt.text, opt.value, opt.sort_order);
+          const optSortOrder = Number.isFinite(opt.sort_order) ? opt.sort_order : 0;
+          insertTplOption.run(tplQuestionId, opt.text, opt.value, optSortOrder);
         }
       }
     }
@@ -188,14 +191,16 @@ router.post('/:id/create-survey', authMiddleware, (req, res) => {
     );
     const surveyId = sResult.lastInsertRowid;
 
-    for (const q of questions) {
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      const sortOrder = Number.isFinite(q.sort_order) ? q.sort_order : i;
       const qResult = insertQuestion.run(
         surveyId,
         q.type,
         q.title,
         q.description,
         q.required,
-        q.sort_order,
+        sortOrder,
         q.scale_min,
         q.scale_max,
         q.scale_min_label,
@@ -205,7 +210,8 @@ router.post('/:id/create-survey', authMiddleware, (req, res) => {
 
       if (q.options && q.options.length > 0) {
         for (const opt of q.options) {
-          insertOption.run(questionId, opt.text, opt.value, opt.sort_order);
+          const optSortOrder = Number.isFinite(opt.sort_order) ? opt.sort_order : 0;
+          insertOption.run(questionId, opt.text, opt.value, optSortOrder);
         }
       }
     }

@@ -134,7 +134,7 @@ router.post('/:shareToken/submit', (req, res) => {
   let actualIsTimeout = !!is_timeout;
 
   if (existingStarted && existingStarted.started_at && timeLimit > 0) {
-    const startTime = new Date(existingStarted.started_at).getTime();
+    const startTime = new Date(existingStarted.started_at + 'Z').getTime();
     const now = Date.now();
     const elapsed = (now - startTime) / 1000;
     const totalSeconds = timeLimit * 60;
